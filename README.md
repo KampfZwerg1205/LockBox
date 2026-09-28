@@ -41,6 +41,14 @@ die wiederhergestellten Einträge danach mit dem aktuell angemeldeten Master-
 Passwort. Ein Backup bleibt auch nach einer späteren Passwortänderung mit dem
 Passwort entschlüsselbar, das bei seiner Erstellung galt.
 
+## Automatische Sperre und Zwischenablage
+
+LOCKBOX sperrt den geöffneten Vault nach fünf Minuten ohne Maus-, Tastatur-
+oder Touch-Eingabe. Über die App kopierte Zugangsdaten werden nach 30 Sekunden
+aus der Windows-Zwischenablage entfernt, sofern dort noch derselbe kopierte
+Text liegt. Beim Beenden der App wird ein noch unverändert kopierter Text
+ebenfalls entfernt.
+
 ## Vorhandene Browser-Daten
 
 Die Desktop-App hat einen eigenen lokalen Speicher. Ein zuvor im Browser

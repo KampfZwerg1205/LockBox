@@ -1,6 +1,6 @@
 {
   "name": "lockbox-desktop",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "description": "LOCKBOX Passwort-Manager für Windows",
   "private": false,
   "main": "main.js",
@@ -33,6 +33,7 @@
       "style.css",
       "script.js",
       "main.js",
+      "preload.js",
       "package.json",
       "assets/lockbox.ico",
       "assets/update-public-key.pem"

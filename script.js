@@ -11,6 +11,7 @@ const ENCRYPTED_VAULT_FORMAT = "lockbox-encrypted-v1";
 const BACKUP_FORMAT = "lockbox-backup-v1";
 const PBKDF2_ITERATIONS = 600000;
 const MAX_BACKUP_FILE_BYTES = 20 * 1024 * 1024;
+const AUTO_LOCK_TIMEOUT_MS = 5 * 60 * 1000;
 
 let vault = [];
 let encryptionKey = null;
@@ -18,6 +19,7 @@ let vaultCryptoParams = null;
 let saveQueue = Promise.resolve(true);
 let pendingRestoreBackup = null;
 let pendingRestoreValue = null;
+let autoLockTimer = null;
 let currentFilter = "all";
 let editingId = null;
 let currentDetailId = null;
@@ -778,6 +780,7 @@ async function unlockVault() {
         masterPassword.value = "";
         loginScreen.classList.add("hidden");
         vaultScreen.classList.remove("hidden");
+        resetAutoLockTimer();
         renderVault();
     } catch (error) {
         console.error("Vault konnte nicht entsperrt werden:", error);
@@ -919,6 +922,11 @@ async function createVault() {
 ========================================================= */
 
 async function lockVault() {
+    if (autoLockTimer) {
+        clearTimeout(autoLockTimer);
+        autoLockTimer = null;
+    }
+
     await saveQueue.catch(() => false);
 
     encryptionKey = null;
@@ -945,6 +953,22 @@ async function lockVault() {
     closeAllModals();
     passwordList.replaceChildren();
     updateLoginState();
+}
+
+function resetAutoLockTimer() {
+    if (autoLockTimer) {
+        clearTimeout(autoLockTimer);
+        autoLockTimer = null;
+    }
+
+    if (!encryptionKey || vaultScreen.classList.contains("hidden")) {
+        return;
+    }
+
+    autoLockTimer = setTimeout(() => {
+        autoLockTimer = null;
+        void lockVault();
+    }, AUTO_LOCK_TIMEOUT_MS);
 }
 
 /* =========================================================
@@ -1978,25 +2002,9 @@ async function copyToClipboard(text) {
     if (!text) return;
 
     try {
-
-        await navigator.clipboard.writeText(text);
-
+        await window.lockboxClipboard.copy(text);
     } catch (error) {
-
-        const textarea =
-            document.createElement("textarea");
-
-        textarea.value = text;
-
-        document.body.appendChild(
-            textarea
-        );
-
-        textarea.select();
-
-        document.execCommand("copy");
-
-        textarea.remove();
+        console.error("Zwischenablage konnte nicht aktualisiert werden:", error);
     }
 }
 
@@ -2005,6 +2013,14 @@ async function copyToClipboard(text) {
 ========================================================= */
 
 function setupEvents() {
+
+    ["pointerdown", "pointermove", "keydown", "wheel", "touchstart"].forEach(
+        (eventName) => {
+            document.addEventListener(eventName, resetAutoLockTimer, {
+                passive: true
+            });
+        }
+    );
 
     /* Login */
 

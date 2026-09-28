@@ -6,7 +6,9 @@ const crypto = require("node:crypto");
 const {
     app,
     BrowserWindow,
+    clipboard,
     dialog,
+    ipcMain,
     session
 } = require("electron");
 const { autoUpdater } = require("electron-updater");
@@ -18,8 +20,11 @@ const UPDATE_PUBLIC_KEY = fs.readFileSync(
     path.join(__dirname, "assets", "update-public-key.pem")
 );
 const APP_PAGE = path.join(__dirname, "index.html");
+const CLIPBOARD_CLEAR_DELAY_MS = 30 * 1000;
 let mainWindow = null;
 let verifiedUpdate = null;
+let clipboardClearTimer = null;
+let copiedClipboardText = null;
 
 app.setAppUserModelId(APP_ID);
 app.setName("LOCKBOX");
@@ -43,6 +48,7 @@ function createWindow() {
         title: "LOCKBOX",
         icon: path.join(__dirname, "assets", "lockbox.ico"),
         webPreferences: {
+            preload: path.join(__dirname, "preload.js"),
             nodeIntegration: false,
             contextIsolation: true,
             sandbox: true,
@@ -75,6 +81,67 @@ function createWindow() {
 
     window.on("closed", () => {
         if (mainWindow === window) mainWindow = null;
+    });
+}
+
+function isTrustedAppFrame(frame) {
+    if (!frame) return false;
+
+    try {
+        const framePath = require("node:url").fileURLToPath(frame.url);
+        return path.resolve(framePath) === path.resolve(APP_PAGE);
+    } catch {
+        return false;
+    }
+}
+
+function clearCopiedClipboardIfUnchanged() {
+    if (clipboardClearTimer) {
+        clearTimeout(clipboardClearTimer);
+        clipboardClearTimer = null;
+    }
+
+    if (
+        copiedClipboardText !== null &&
+        clipboard.readText() === copiedClipboardText
+    ) {
+        clipboard.clear();
+    }
+
+    copiedClipboardText = null;
+}
+
+function configureClipboard() {
+    ipcMain.handle("lockbox:copy-to-clipboard", (event, text) => {
+        if (!isTrustedAppFrame(event.senderFrame)) {
+            throw new Error("Clipboard access is limited to the LOCKBOX app.");
+        }
+
+        if (typeof text !== "string" || text.length > 100000) {
+            throw new TypeError("Invalid clipboard text.");
+        }
+
+        if (clipboardClearTimer) {
+            clearTimeout(clipboardClearTimer);
+        }
+
+        clipboard.writeText(text);
+        copiedClipboardText = text;
+        clipboardClearTimer = setTimeout(() => {
+            if (
+                copiedClipboardText === text &&
+                clipboard.readText() === text
+            ) {
+                clipboard.clear();
+            }
+
+            if (copiedClipboardText === text) {
+                copiedClipboardText = null;
+                clipboardClearTimer = null;
+            }
+        }, CLIPBOARD_CLEAR_DELAY_MS);
+
+        return true;
     });
 }
 
@@ -214,6 +281,7 @@ function configureAutoUpdates() {
 }
 
 app.whenReady().then(() => {
+    configureClipboard();
     session.defaultSession.setPermissionRequestHandler(
         (_webContents, _permission, callback) => callback(false)
     );
@@ -229,3 +297,5 @@ app.whenReady().then(() => {
 app.on("window-all-closed", () => {
     if (process.platform !== "darwin") app.quit();
 });
+
+app.on("before-quit", clearCopiedClipboardIfUnchanged);
