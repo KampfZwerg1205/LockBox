@@ -50,6 +50,7 @@
       }
     ],
     "nsis": {
+      "artifactName": "LOCKBOX-Setup-${version}.${ext}",
       "oneClick": false,
       "perMachine": false,
       "allowToChangeInstallationDirectory": true,

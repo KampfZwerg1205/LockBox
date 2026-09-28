@@ -19,7 +19,7 @@ async function sha512(filePath) {
 }
 
 async function main() {
-    const installer = `LOCKBOX Setup ${packageInfo.version}.exe`;
+    const installer = `LOCKBOX-Setup-${packageInfo.version}.exe`;
 
     if (!fs.existsSync(path.join(distDirectory, installer))) {
         throw new Error("Kein LOCKBOX-NSIS-Installer im Ordner dist gefunden.");
