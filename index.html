@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; font-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'"
+    >
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>LOCKBOX</title>
+
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+
+<!-- ==================================================
+     LOGIN
+================================================== -->
+
+<section id="loginScreen" class="screen">
+
+    <div class="loginBox">
+
+        <div class="logo">
+            🔐
+        </div>
+
+        <h1>LOCKBOX</h1>
+
+        <p class="subtitle">
+            Sicherer Passwort-Manager
+        </p>
+
+        <label for="masterPassword">
+            Master-Passwort
+        </label>
+
+        <input
+            type="password"
+            id="masterPassword"
+            placeholder="Master-Passwort eingeben"
+            autocomplete="current-password"
+        >
+
+        <button
+            id="unlockButton"
+            class="primaryButton"
+        >
+            🔓 Entsperren
+        </button>
+
+        <button
+            id="showCreateVaultButton"
+            class="secondaryButton hidden"
+        >
+            Neues Vault erstellen
+        </button>
+
+        <p
+            id="loginMessage"
+            class="message"
+        ></p>
+
+    </div>
+
+</section>
+
+
+
+<!-- ==================================================
+     VAULT
+================================================== -->
+
+<section
+    id="vaultScreen"
+    class="screen hidden"
+>
+
+    <header class="topBar">
+
+        <div>
+
+            <h1>
+                🔐 LOCKBOX
+            </h1>
+
+            <span>
+                Sicherer Passwort-Manager
+            </span>
+
+        </div>
+
+        <div class="topBarActions">
+
+            <button
+                id="settingsButton"
+                class="iconButton"
+                title="Einstellungen"
+            >
+                ⚙️
+            </button>
+
+            <button
+                id="lockButton"
+                class="iconButton"
+                title="Vault sperren"
+            >
+                🔒
+            </button>
+
+        </div>
+
+    </header>
+
+
+
+    <main class="container">
+
+
+        <!-- DASHBOARD -->
+
+        <section class="dashboard">
+
+            <div class="dashboardCard">
+
+                <span class="dashboardIcon">
+                    🔐
+                </span>
+
+                <div>
+
+                    <strong id="dashboardTotal">
+                        0
+                    </strong>
+
+                    <span>
+                        Passwörter
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="dashboardCard">
+
+                <span class="dashboardIcon">
+                    ⭐
+                </span>
+
+                <div>
+
+                    <strong id="dashboardFavorites">
+                        0
+                    </strong>
+
+                    <span>
+                        Favoriten
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="dashboardCard">
+
+                <span class="dashboardIcon">
+                    🟢
+                </span>
+
+                <div>
+
+                    <strong id="dashboardStrong">
+                        0
+                    </strong>
+
+                    <span>
+                        Stark
+                    </span>
+
+                </div>
+
+            </div>
+
+
+            <div class="dashboardCard">
+
+                <span class="dashboardIcon">
+                    🔴
+                </span>
+
+                <div>
+
+                    <strong id="dashboardWeak">
+                        0
+                    </strong>
+
+                    <span>
+                        Schwach
+                    </span>
+
+                </div>
+
+            </div>
+
+        </section>
+
+
+
+        <!-- SECURITY -->
+
+        <section class="securityPanel">
+
+            <div class="securityHeader">
+
+                <div>
+
+                    <h2>
+                        🛡️ Sicherheitsstatus
+                    </h2>
+
+                    <p id="securityMessage">
+                        Deine Passwörter werden analysiert.
+                    </p>
+
+                </div>
+
+                <strong id="securityScore">
+                    0%
+                </strong>
+
+            </div>
+
+            <div class="progressBar">
+
+                <div
+                    id="securityProgressFill"
+                    class="progressFill"
+                ></div>
+
+            </div>
+
+            <div id="securityWarnings"></div>
+
+        </section>
+
+
+
+        <!-- TOOLBAR -->
+
+        <section class="toolbar">
+
+            <div class="filters">
+
+                <button
+                    class="filterButton active"
+                    data-filter="all"
+                >
+                    Alle
+                </button>
+
+                <button
+                    class="filterButton"
+                    data-filter="strong"
+                >
+                    🟢 Stark
+                </button>
+
+                <button
+                    class="filterButton"
+                    data-filter="medium"
+                >
+                    🟡 Mittel
+                </button>
+
+                <button
+                    class="filterButton"
+                    data-filter="weak"
+                >
+                    🔴 Schwach
+                </button>
+
+                <button
+                    class="filterButton"
+                    data-filter="favorite"
+                >
+                    ⭐ Favoriten
+                </button>
+
+            </div>
+
+            <div class="searchArea">
+
+                <input
+                    type="search"
+                    id="searchInput"
+                    placeholder="🔎 Suchen..."
+                >
+
+                <button
+                    id="addButton"
+                    class="primaryButton"
+                >
+                    ＋ Passwort
+                </button>
+
+            </div>
+
+        </section>
+
+
+        <p
+            id="vaultSaveStatus"
+            class="vaultSaveStatus"
+            role="status"
+            aria-live="polite"
+        ></p>
+
+
+        <!-- PASSWORD LIST -->
+
+        <section
+            id="passwordList"
+            class="passwordList"
+        ></section>
+
+    </main>
+
+</section>
+
+
+
+<!-- ==================================================
+     CREATE VAULT MODAL
+================================================== -->
+
+<div
+    id="createVaultModal"
+    class="modal hidden"
+>
+
+    <div class="modalContent">
+
+        <div class="modalHeader">
+
+            <div>
+
+                <h2>
+                    🔐 Neues Vault
+                </h2>
+
+                <p>
+                    Erstelle dein Master-Passwort.
+                </p>
+
+            </div>
+
+            <button
+                id="closeCreateVaultButton"
+                class="closeButton"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <label for="newMasterPassword">
+            Master-Passwort
+        </label>
+
+        <input
+            type="password"
+            id="newMasterPassword"
+            placeholder="Master-Passwort"
+            autocomplete="new-password"
+        >
+
+        <div class="strengthBar">
+
+            <div
+                id="strengthFill"
+            ></div>
+
+        </div>
+
+        <span id="strengthText">
+            Passwortstärke
+        </span>
+
+        <label for="confirmMasterPassword">
+            Master-Passwort wiederholen
+        </label>
+
+        <input
+            type="password"
+            id="confirmMasterPassword"
+            placeholder="Master-Passwort wiederholen"
+            autocomplete="new-password"
+        >
+
+        <p
+            id="createVaultMessage"
+            class="message"
+        ></p>
+
+        <div class="modalActions">
+
+            <button
+                id="cancelCreateVaultButton"
+                class="secondaryButton"
+            >
+                Abbrechen
+            </button>
+
+            <button
+                id="createVaultButton"
+                class="primaryButton"
+            >
+                Vault erstellen
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ==================================================
+     SETTINGS
+================================================== -->
+
+<div
+    id="settingsModal"
+    class="modal hidden"
+>
+
+    <div class="modalContent">
+
+        <div class="modalHeader">
+
+            <div>
+
+                <h2>
+                    ⚙️ Einstellungen
+                </h2>
+
+                <p>
+                    Verwalte deine LOCKBOX-Sicherheit.
+                </p>
+
+            </div>
+
+            <button
+                id="closeSettingsButton"
+                class="closeButton"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div class="settingsItem">
+
+            <div>
+
+                <strong>
+                    🔑 Master-Passwort
+                </strong>
+
+                <p>
+                    Ändere dein aktuelles Master-Passwort.
+                </p>
+
+            </div>
+
+            <button
+                id="changeMasterPasswordButton"
+                class="secondaryButton"
+            >
+                Ändern
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ==================================================
+     CHANGE MASTER PASSWORD
+================================================== -->
+
+<div
+    id="changeMasterPasswordModal"
+    class="modal hidden"
+>
+
+    <div class="modalContent">
+
+        <div class="modalHeader">
+
+            <div>
+
+                <h2>
+                    🔑 Master-Passwort ändern
+                </h2>
+
+                <p>
+                    Deine gespeicherten Passwörter bleiben erhalten.
+                </p>
+
+            </div>
+
+            <button
+                id="closeChangeMasterPasswordButton"
+                class="closeButton"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <label for="currentMasterPassword">
+            Aktuelles Master-Passwort
+        </label>
+
+        <input
+            type="password"
+            id="currentMasterPassword"
+            placeholder="Aktuelles Passwort"
+        >
+
+        <label for="newMasterPasswordChange">
+            Neues Master-Passwort
+        </label>
+
+        <input
+            type="password"
+            id="newMasterPasswordChange"
+            placeholder="Neues Master-Passwort"
+            autocomplete="new-password"
+        >
+
+        <div class="strengthBar">
+
+            <div
+                id="changeStrengthFill"
+            ></div>
+
+        </div>
+
+        <span id="changeStrengthText">
+            Passwortstärke
+        </span>
+
+        <label for="confirmMasterPasswordChange">
+            Neues Master-Passwort wiederholen
+        </label>
+
+        <input
+            type="password"
+            id="confirmMasterPasswordChange"
+            placeholder="Neues Master-Passwort wiederholen"
+            autocomplete="new-password"
+        >
+
+        <p
+            id="changeMasterPasswordMessage"
+            class="message"
+        ></p>
+
+        <div class="modalActions">
+
+            <button
+                id="cancelChangeMasterPasswordButton"
+                class="secondaryButton"
+            >
+                Abbrechen
+            </button>
+
+            <button
+                id="changeMasterPasswordSubmitButton"
+                class="primaryButton"
+            >
+                Passwort ändern
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ==================================================
+     PASSWORD MODAL
+================================================== -->
+
+<div
+    id="passwordModal"
+    class="modal hidden"
+>
+
+    <div class="modalContent">
+
+        <div class="modalHeader">
+
+            <div>
+
+                <h2 id="passwordModalTitle">
+                    Passwort hinzufügen
+                </h2>
+
+                <p>
+                    Speichere deine Zugangsdaten sicher.
+                </p>
+
+            </div>
+
+            <button
+                id="closeModalButton"
+                class="closeButton"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <label for="entryName">
+            Name
+        </label>
+
+        <input
+            type="text"
+            id="entryName"
+            placeholder="z. B. Discord"
+        >
+
+        <label for="entryUsername">
+            Benutzername / E-Mail
+        </label>
+
+        <input
+            type="text"
+            id="entryUsername"
+            placeholder="Benutzername oder E-Mail"
+        >
+
+        <label for="entryCategory">
+            Kategorie
+        </label>
+
+        <select id="entryCategory">
+
+            <option value="Social">
+                Social
+            </option>
+
+            <option value="Gaming">
+                Gaming
+            </option>
+
+            <option value="E-Mail">
+                E-Mail
+            </option>
+
+            <option value="Shopping">
+                Shopping
+            </option>
+
+            <option value="Finanzen">
+                Finanzen
+            </option>
+
+            <option value="Arbeit">
+                Arbeit
+            </option>
+
+            <option value="Sonstiges">
+                Sonstiges
+            </option>
+
+        </select>
+
+        <label for="entryPassword">
+            Passwort
+        </label>
+
+        <div class="passwordInputRow">
+
+            <input
+                type="password"
+                id="entryPassword"
+                placeholder="Passwort eingeben"
+                autocomplete="new-password"
+            >
+
+            <button
+                id="togglePasswordButton"
+                class="smallButton"
+                type="button"
+            >
+                👁️
+            </button>
+
+        </div>
+
+        <button
+            id="generatePasswordButton"
+            class="generatorButton"
+            type="button"
+        >
+            🎲 Sicheres Passwort generieren
+        </button>
+
+        <div class="entryStrength">
+
+            <div class="strengthBar">
+
+                <div
+                    id="entryStrengthFill"
+                ></div>
+
+            </div>
+
+            <span id="entryStrengthText">
+                Passwortstärke
+            </span>
+
+        </div>
+
+        <p
+            id="passwordMessage"
+            class="message"
+        ></p>
+
+        <div class="modalActions">
+
+            <button
+                id="cancelButton"
+                class="secondaryButton"
+            >
+                Abbrechen
+            </button>
+
+            <button
+                id="saveButton"
+                class="primaryButton"
+            >
+                Speichern
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<!-- ==================================================
+     PASSWORD DETAIL MODAL
+================================================== -->
+
+<div
+    id="detailModal"
+    class="modal hidden"
+>
+
+    <div class="modalContent detailModalContent">
+
+        <div class="modalHeader">
+
+            <div>
+
+                <h2 id="detailTitle">
+                    🔐 Passwort
+                </h2>
+
+                <p id="detailCategory">
+                    Kategorie
+                </p>
+
+            </div>
+
+            <button
+                id="closeDetailButton"
+                class="closeButton"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+
+        <div class="detailSection">
+
+            <span class="detailLabel">
+                👤 Benutzername / E-Mail
+            </span>
+
+            <div class="detailValueRow">
+
+                <span
+                    id="detailUsername"
+                    class="detailValue"
+                >
+                    -
+                </span>
+
+                <button
+                    id="copyUsernameButton"
+                    class="detailActionButton"
+                    title="Benutzername kopieren"
+                >
+                    📋
+                </button>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="detailSection">
+
+            <span class="detailLabel">
+                🔑 Passwort
+            </span>
+
+            <div class="detailValueRow">
+
+                <input
+                    id="detailPassword"
+                    class="detailPassword"
+                    type="password"
+                    readonly
+                >
+
+                <button
+                    id="toggleDetailPasswordButton"
+                    class="detailActionButton"
+                    title="Passwort anzeigen"
+                >
+                    👁️
+                </button>
+
+                <button
+                    id="copyDetailPasswordButton"
+                    class="detailActionButton"
+                    title="Passwort kopieren"
+                >
+                    📋
+                </button>
+
+            </div>
+
+        </div>
+
+
+
+        <div class="detailSecurity">
+
+            <div>
+
+                <span class="detailLabel">
+                    🛡️ Passwortstärke
+                </span>
+
+                <span
+                    id="detailStrength"
+                    class="strengthBadge"
+                >
+                    -
+                </span>
+
+            </div>
+
+            <button
+                id="detailFavoriteButton"
+                class="favoriteDetailButton"
+            >
+                ☆ Favorit
+            </button>
+
+        </div>
+
+
+
+        <div class="detailActions">
+
+            <button
+                id="detailEditButton"
+                class="secondaryButton"
+            >
+                ✏️ Bearbeiten
+            </button>
+
+            <button
+                id="detailDeleteButton"
+                class="dangerButton"
+            >
+                🗑️ Löschen
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+
+<script src="script.js"></script>
+
+</body>
+
+</html>

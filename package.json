@@ -1,0 +1,61 @@
+{
+  "name": "lockbox-desktop",
+  "version": "1.1.0",
+  "description": "LOCKBOX Passwort-Manager für Windows",
+  "private": false,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win nsis",
+    "dist:portable": "electron-builder --win portable",
+    "update:keygen": "node scripts/create-update-signing-key.js",
+    "update:manifest": "node scripts/create-update-manifest.js",
+    "update:sign": "node scripts/sign-update-manifest.js"
+  },
+  "author": "LOCKBOX",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/KampfZwerg1205/lockbox.git"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
+  },
+  "devDependencies": {
+    "electron": "^41.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.lockbox.passwordmanager",
+    "productName": "LOCKBOX",
+    "asar": true,
+    "files": [
+      "index.html",
+      "style.css",
+      "script.js",
+      "main.js",
+      "package.json",
+      "assets/lockbox.ico",
+      "assets/update-public-key.pem"
+    ],
+    "win": {
+      "icon": "assets/lockbox.ico",
+      "target": ["nsis"]
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "KampfZwerg1205",
+        "repo": "lockbox",
+        "releaseType": "release"
+      }
+    ],
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LOCKBOX"
+    }
+  }
+}

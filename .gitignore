@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release-signing-key.pem
+*.private.pem
+*.private-key.pem
+*.pfx
+*.p12
+.env
+.env.*
+!.env.example
