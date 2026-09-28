@@ -494,6 +494,187 @@
 
         </div>
 
+        <div class="settingsItem settingsBackupItem">
+
+            <div>
+
+                <strong>
+                    💾 Verschlüsselte Sicherung
+                </strong>
+
+                <p>
+                    Speichere eine verschlüsselte Kopie deines Vaults. Zum Öffnen brauchst du das Master-Passwort, das beim Erstellen der Sicherung galt.
+                </p>
+
+            </div>
+
+            <button
+                id="vaultBackupButton"
+                class="secondaryButton"
+                type="button"
+            >
+                Sicherung herunterladen
+            </button>
+
+        </div>
+
+        <div class="settingsItem settingsBackupItem">
+
+            <div>
+
+                <strong>
+                    ♻️ Sicherung wiederherstellen
+                </strong>
+
+                <p>
+                    Prüfe zuerst die Sicherungsdatei. Erst danach kannst du damit den geöffneten Vault ersetzen.
+                </p>
+
+            </div>
+
+            <button
+                id="selectVaultBackupButton"
+                class="secondaryButton"
+                type="button"
+            >
+                Sicherung auswählen
+            </button>
+
+            <input
+                id="vaultBackupFileInput"
+                class="hidden"
+                type="file"
+                accept=".json,application/json"
+            >
+
+        </div>
+
+        <p
+            id="backupStatusMessage"
+            class="message backupStatusMessage"
+            role="status"
+            aria-live="polite"
+        ></p>
+
+    </div>
+
+</div>
+
+
+<!-- ==================================================
+     RESTORE BACKUP
+================================================== -->
+
+<div
+    id="restoreBackupModal"
+    class="modal hidden"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="restoreBackupTitle"
+>
+
+    <div class="modalContent">
+
+        <div class="modalHeader">
+
+            <div>
+
+                <h2 id="restoreBackupTitle">
+                    Sicherung wiederherstellen
+                </h2>
+
+                <p>
+                    Die Sicherung wird nach dem Prüfen mit deinem aktuellen LOCKBOX-Master-Passwort gespeichert.
+                </p>
+
+            </div>
+
+            <button
+                id="closeRestoreBackupButton"
+                class="closeButton"
+                type="button"
+                aria-label="Schließen"
+            >
+                ×
+            </button>
+
+        </div>
+
+        <div id="restoreBackupPasswordStep">
+
+            <label for="restoreBackupPassword">
+                Master-Passwort der Sicherung
+            </label>
+
+            <input
+                id="restoreBackupPassword"
+                type="password"
+                autocomplete="current-password"
+                placeholder="Passwort zum Zeitpunkt der Sicherung"
+            >
+
+            <p
+                id="restoreBackupMessage"
+                class="message"
+                role="status"
+                aria-live="polite"
+            ></p>
+
+            <div class="modalActions">
+
+                <button
+                    id="cancelRestoreBackupButton"
+                    class="secondaryButton"
+                    type="button"
+                >
+                    Abbrechen
+                </button>
+
+                <button
+                    id="verifyRestoreBackupButton"
+                    class="primaryButton"
+                    type="button"
+                >
+                    Sicherung prüfen
+                </button>
+
+            </div>
+
+        </div>
+
+        <div
+            id="restoreBackupConfirmStep"
+            class="hidden"
+        >
+
+            <p id="restoreBackupSummary" class="restoreBackupSummary"></p>
+
+            <p class="restoreBackupWarning">
+                Beim Wiederherstellen werden alle Einträge im aktuell geöffneten Vault durch die Sicherung ersetzt.
+            </p>
+
+            <div class="modalActions">
+
+                <button
+                    id="cancelRestoreBackupConfirmButton"
+                    class="secondaryButton"
+                    type="button"
+                >
+                    Abbrechen
+                </button>
+
+                <button
+                    id="confirmRestoreBackupButton"
+                    class="dangerButton"
+                    type="button"
+                >
+                    Jetzt ersetzen
+                </button>
+
+            </div>
+
+        </div>
+
     </div>
 
 </div>

@@ -838,6 +838,37 @@ select:focus {
     font-size: 14px;
 }
 
+.settingsItem + .settingsItem {
+    margin-top: 12px;
+}
+
+.settingsBackupItem {
+    align-items: flex-start;
+}
+
+.backupStatusMessage {
+    color: var(--muted);
+}
+
+.backupStatusMessage.saveError {
+    color: #f87171;
+}
+
+.restoreBackupSummary {
+    color: #cbd5e1;
+    line-height: 1.6;
+}
+
+.restoreBackupWarning {
+    margin-top: 14px;
+    padding: 13px 15px;
+    border: 1px solid rgba(239, 68, 68, 0.28);
+    border-radius: 11px;
+    background: rgba(239, 68, 68, 0.08);
+    color: #fca5a5;
+    line-height: 1.5;
+}
+
 /* =========================================================
    DETAIL MODAL
 ========================================================= */

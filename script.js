@@ -8,12 +8,16 @@
 const VAULT_KEY = "lockbox_vault";
 const MASTER_KEY = "lockbox_master";
 const ENCRYPTED_VAULT_FORMAT = "lockbox-encrypted-v1";
+const BACKUP_FORMAT = "lockbox-backup-v1";
 const PBKDF2_ITERATIONS = 600000;
+const MAX_BACKUP_FILE_BYTES = 20 * 1024 * 1024;
 
 let vault = [];
 let encryptionKey = null;
 let vaultCryptoParams = null;
 let saveQueue = Promise.resolve(true);
+let pendingRestoreBackup = null;
+let pendingRestoreValue = null;
 let currentFilter = "all";
 let editingId = null;
 let currentDetailId = null;
@@ -43,6 +47,23 @@ const createVaultMessage = $("createVaultMessage");
 const settingsButton = $("settingsButton");
 const settingsModal = $("settingsModal");
 const closeSettingsButton = $("closeSettingsButton");
+const vaultBackupButton = $("vaultBackupButton");
+const selectVaultBackupButton = $("selectVaultBackupButton");
+const vaultBackupFileInput = $("vaultBackupFileInput");
+const backupStatusMessage = $("backupStatusMessage");
+
+const restoreBackupModal = $("restoreBackupModal");
+const closeRestoreBackupButton = $("closeRestoreBackupButton");
+const cancelRestoreBackupButton = $("cancelRestoreBackupButton");
+const cancelRestoreBackupConfirmButton =
+    $("cancelRestoreBackupConfirmButton");
+const restoreBackupPassword = $("restoreBackupPassword");
+const restoreBackupMessage = $("restoreBackupMessage");
+const restoreBackupPasswordStep = $("restoreBackupPasswordStep");
+const restoreBackupConfirmStep = $("restoreBackupConfirmStep");
+const restoreBackupSummary = $("restoreBackupSummary");
+const verifyRestoreBackupButton = $("verifyRestoreBackupButton");
+const confirmRestoreBackupButton = $("confirmRestoreBackupButton");
 
 const changeMasterPasswordButton = $("changeMasterPasswordButton");
 const changeMasterPasswordModal = $("changeMasterPasswordModal");
@@ -266,13 +287,8 @@ async function encryptVaultForPassword(plaintext, password) {
     return { envelope, key, cryptoParams };
 }
 
-async function decryptVaultEnvelope(envelope, password) {
+async function decryptVaultEnvelopeWithKey(envelope, key) {
     const params = validateVaultEnvelope(envelope);
-    const key = await deriveEncryptionKey(
-        password,
-        params.salt,
-        params.iterations
-    );
     const plaintext = await crypto.subtle.decrypt(
         { name: "AES-GCM", iv: params.iv, tagLength: 128 },
         key,
@@ -288,12 +304,23 @@ async function decryptVaultEnvelope(envelope, password) {
 
     return {
         value,
-        key,
         cryptoParams: {
             salt: params.salt,
             iterations: params.iterations
         }
     };
+}
+
+async function decryptVaultEnvelope(envelope, password) {
+    const params = validateVaultEnvelope(envelope);
+    const key = await deriveEncryptionKey(
+        password,
+        params.salt,
+        params.iterations
+    );
+    const decrypted = await decryptVaultEnvelopeWithKey(envelope, key);
+
+    return { ...decrypted, key };
 }
 
 async function saveVault() {
@@ -330,6 +357,302 @@ async function saveVault() {
         });
 
     return saveQueue;
+}
+
+/* =========================================================
+   ENCRYPTED BACKUP AND RESTORE
+========================================================= */
+
+function isValidBackupVault(value) {
+    return Array.isArray(value) && value.every((item) => {
+        if (!item || typeof item !== "object" || Array.isArray(item)) {
+            return false;
+        }
+
+        const validId =
+            typeof item.id === "string" ||
+            (typeof item.id === "number" && Number.isFinite(item.id));
+        const optionalText = (value) =>
+            value === undefined || value === null || typeof value === "string";
+
+        return validId &&
+            optionalText(item.name) &&
+            optionalText(item.password) &&
+            optionalText(item.username) &&
+            optionalText(item.category) &&
+            (item.favorite === undefined || typeof item.favorite === "boolean") &&
+            optionalText(item.createdAt) &&
+            (item.strength === undefined ||
+                ["strong", "medium", "weak"].includes(item.strength));
+    });
+}
+
+function setBackupStatus(message, isError = false) {
+    backupStatusMessage.textContent = message;
+    backupStatusMessage.classList.toggle("saveError", isError);
+}
+
+async function downloadVaultBackup() {
+    if (!encryptionKey || !vaultCryptoParams) return;
+
+    vaultBackupButton.disabled = true;
+    setBackupStatus("Verschlüsselte Sicherung wird erstellt …");
+
+    try {
+        await saveQueue.catch(() => false);
+
+        const envelope = await encryptWithKey(
+            JSON.stringify(vault),
+            encryptionKey,
+            vaultCryptoParams
+        );
+        const verified = await decryptVaultEnvelopeWithKey(
+            envelope,
+            encryptionKey
+        );
+
+        if (JSON.stringify(verified.value) !== JSON.stringify(vault)) {
+            throw new Error("BACKUP_VERIFY_FAILED");
+        }
+
+        const backup = {
+            format: BACKUP_FORMAT,
+            version: 1,
+            createdAt: new Date().toISOString(),
+            vault: envelope
+        };
+        const blob = new Blob(
+            [JSON.stringify(backup, null, 2)],
+            { type: "application/json" }
+        );
+        const downloadUrl = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        const timestamp = new Date()
+            .toISOString()
+            .replaceAll(":", "-")
+            .replaceAll(".", "-");
+
+        link.href = downloadUrl;
+        link.download = `LOCKBOX-Sicherung-${timestamp}.json`;
+        link.hidden = true;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+
+        setBackupStatus(
+            "✅ Verschlüsselte Sicherung heruntergeladen. Bewahre sie sicher auf."
+        );
+    } catch (error) {
+        console.error("Verschlüsselte Sicherung fehlgeschlagen:", error);
+        setBackupStatus("❌ Die Sicherung konnte nicht erstellt werden.", true);
+    } finally {
+        vaultBackupButton.disabled = false;
+    }
+}
+
+async function selectVaultBackup(file) {
+    if (!file) return;
+
+    if (file.size > MAX_BACKUP_FILE_BYTES) {
+        setBackupStatus("❌ Die Sicherungsdatei ist größer als 20 MB.", true);
+        return;
+    }
+
+    try {
+        const backup = JSON.parse(await file.text());
+
+        if (
+            !backup ||
+            backup.format !== BACKUP_FORMAT ||
+            backup.version !== 1 ||
+            typeof backup.createdAt !== "string" ||
+            !Number.isFinite(Date.parse(backup.createdAt))
+        ) {
+            throw new Error("INVALID_BACKUP");
+        }
+
+        validateVaultEnvelope(backup.vault);
+        pendingRestoreBackup = backup;
+        pendingRestoreValue = null;
+        restoreBackupPassword.value = "";
+        restoreBackupMessage.textContent = "";
+        restoreBackupSummary.textContent = "";
+        restoreBackupPasswordStep.classList.remove("hidden");
+        restoreBackupConfirmStep.classList.add("hidden");
+        settingsModal.classList.add("hidden");
+        restoreBackupModal.classList.remove("hidden");
+        restoreBackupPassword.focus();
+    } catch (error) {
+        console.warn("Sicherungsdatei konnte nicht gelesen werden:", error);
+        setBackupStatus(
+            "❌ Die Datei ist keine gültige LOCKBOX-Sicherung oder wurde beschädigt.",
+            true
+        );
+    }
+}
+
+async function verifyVaultBackup() {
+    if (!pendingRestoreBackup) return;
+
+    const backupBeingVerified = pendingRestoreBackup;
+    const password = restoreBackupPassword.value;
+    if (!password) {
+        restoreBackupMessage.textContent =
+            "Bitte gib das Master-Passwort dieser Sicherung ein.";
+        return;
+    }
+
+    verifyRestoreBackupButton.disabled = true;
+    restoreBackupMessage.textContent = "Sicherung wird geprüft …";
+
+    try {
+        const restored = await decryptVaultEnvelope(
+            backupBeingVerified.vault,
+            password
+        );
+
+        if (
+            pendingRestoreBackup !== backupBeingVerified ||
+            restoreBackupModal.classList.contains("hidden")
+        ) {
+            return;
+        }
+
+        if (!isValidBackupVault(restored.value)) {
+            throw new Error("INVALID_BACKUP_CONTENT");
+        }
+
+        pendingRestoreValue = restored.value;
+        restoreBackupPassword.value = "";
+
+        const createdAt = new Date(pendingRestoreBackup.createdAt);
+        const formattedDate = new Intl.DateTimeFormat("de-DE", {
+            dateStyle: "medium",
+            timeStyle: "short"
+        }).format(createdAt);
+
+        restoreBackupSummary.textContent =
+            `Die Sicherung ist gültig und enthält ${restored.value.length} ` +
+            `${restored.value.length === 1 ? "Eintrag" : "Einträge"} ` +
+            `(erstellt am ${formattedDate}).`;
+        restoreBackupMessage.textContent = "";
+        restoreBackupPasswordStep.classList.add("hidden");
+        restoreBackupConfirmStep.classList.remove("hidden");
+        confirmRestoreBackupButton.focus();
+    } catch (error) {
+        console.warn("Sicherungsdatei konnte nicht entschlüsselt werden:", error);
+        restoreBackupPassword.value = "";
+        restoreBackupMessage.textContent =
+            error.name === "OperationError"
+                ? "❌ Passwort falsch oder Sicherungsdatei beschädigt."
+                : "❌ Die Sicherung enthält ungültige oder beschädigte Daten.";
+        restoreBackupPassword.focus();
+    } finally {
+        verifyRestoreBackupButton.disabled = false;
+    }
+}
+
+async function restoreVaultBackup() {
+    if (
+        !pendingRestoreValue ||
+        !encryptionKey ||
+        !vaultCryptoParams
+    ) {
+        return;
+    }
+
+    confirmRestoreBackupButton.disabled = true;
+
+    const previousVault = vault;
+    const previousEnvelope = localStorage.getItem(VAULT_KEY);
+    let envelopeWasReplaced = false;
+    let rollbackSucceeded = true;
+
+    try {
+        await saveQueue.catch(() => false);
+
+        const replacementEnvelope = await encryptWithKey(
+            JSON.stringify(pendingRestoreValue),
+            encryptionKey,
+            vaultCryptoParams
+        );
+        const prepared = await decryptVaultEnvelopeWithKey(
+            replacementEnvelope,
+            encryptionKey
+        );
+
+        if (
+            JSON.stringify(prepared.value) !==
+            JSON.stringify(pendingRestoreValue)
+        ) {
+            throw new Error("RESTORE_VERIFY_FAILED");
+        }
+
+        localStorage.setItem(
+            VAULT_KEY,
+            JSON.stringify(replacementEnvelope)
+        );
+        envelopeWasReplaced = true;
+
+        const persisted = parseStoredVault(localStorage.getItem(VAULT_KEY));
+        if (persisted.type !== "encrypted") {
+            throw new Error("RESTORE_VERIFY_FAILED");
+        }
+
+        const checked = await decryptVaultEnvelopeWithKey(
+            persisted.value,
+            encryptionKey
+        );
+        if (JSON.stringify(checked.value) !== JSON.stringify(pendingRestoreValue)) {
+            throw new Error("RESTORE_VERIFY_FAILED");
+        }
+
+        vault = checked.value;
+        renderVault();
+        closeRestoreBackupModal();
+        setBackupStatus(
+            "✅ Sicherung wiederhergestellt und mit deinem aktuellen Master-Passwort verschlüsselt."
+        );
+    } catch (error) {
+        console.error("Sicherung konnte nicht wiederhergestellt werden:", error);
+        vault = previousVault;
+
+        if (envelopeWasReplaced && previousEnvelope !== null) {
+            try {
+                localStorage.setItem(VAULT_KEY, previousEnvelope);
+            } catch (rollbackError) {
+                rollbackSucceeded = false;
+                console.error("Vorheriger Vault konnte nicht zurückgesetzt werden:", rollbackError);
+            }
+        }
+
+        restoreBackupMessage.textContent =
+            rollbackSucceeded
+                ? "❌ Wiederherstellung fehlgeschlagen. Der bisherige Vault wurde beibehalten."
+                : "❌ Wiederherstellung fehlgeschlagen. LOCKBOX konnte den vorherigen Speicherzustand nicht zurücksetzen. Lass die App geöffnet und sichere den Vault, bevor du sie schließt.";
+        restoreBackupConfirmStep.classList.add("hidden");
+        restoreBackupPasswordStep.classList.remove("hidden");
+        restoreBackupPassword.focus();
+    } finally {
+        confirmRestoreBackupButton.disabled = false;
+    }
+}
+
+function closeRestoreBackupModal(reopenSettings = true) {
+    restoreBackupModal.classList.add("hidden");
+    restoreBackupPassword.value = "";
+    restoreBackupMessage.textContent = "";
+    restoreBackupSummary.textContent = "";
+    restoreBackupPasswordStep.classList.remove("hidden");
+    restoreBackupConfirmStep.classList.add("hidden");
+    pendingRestoreBackup = null;
+    pendingRestoreValue = null;
+    vaultBackupFileInput.value = "";
+
+    if (reopenSettings && encryptionKey) {
+        settingsModal.classList.remove("hidden");
+    }
 }
 
 /* =========================================================
@@ -1779,6 +2102,58 @@ function setupEvents() {
         }
     );
 
+    vaultBackupButton.addEventListener(
+        "click",
+        downloadVaultBackup
+    );
+
+    selectVaultBackupButton.addEventListener(
+        "click",
+        () => vaultBackupFileInput.click()
+    );
+
+    vaultBackupFileInput.addEventListener(
+        "change",
+        async () => {
+            await selectVaultBackup(vaultBackupFileInput.files[0]);
+            vaultBackupFileInput.value = "";
+        }
+    );
+
+    closeRestoreBackupButton.addEventListener(
+        "click",
+        () => closeRestoreBackupModal()
+    );
+
+    cancelRestoreBackupButton.addEventListener(
+        "click",
+        () => closeRestoreBackupModal()
+    );
+
+    cancelRestoreBackupConfirmButton.addEventListener(
+        "click",
+        () => closeRestoreBackupModal()
+    );
+
+    verifyRestoreBackupButton.addEventListener(
+        "click",
+        verifyVaultBackup
+    );
+
+    restoreBackupPassword.addEventListener(
+        "keydown",
+        (event) => {
+            if (event.key === "Enter") {
+                verifyVaultBackup();
+            }
+        }
+    );
+
+    confirmRestoreBackupButton.addEventListener(
+        "click",
+        restoreVaultBackup
+    );
+
     changeMasterPasswordButton.addEventListener(
         "click",
         openChangeMasterPasswordModal
@@ -2061,6 +2436,8 @@ function closeAllModals() {
     detailModal.classList.add(
         "hidden"
     );
+
+    closeRestoreBackupModal(false);
 
     newMasterPassword.value = "";
     confirmMasterPassword.value = "";

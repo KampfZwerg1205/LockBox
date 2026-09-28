@@ -27,6 +27,20 @@ Migration gesperrt und vorhandene Daten werden nicht absichtlich gelöscht.
 Neue Master-Passwörter müssen mindestens 12 Zeichen haben. Bestehende
 Master-Passwörter werden bei der Migration nicht erzwungen geändert.
 
+## Verschlüsselte Sicherungen
+
+Über **Einstellungen → Sicherung herunterladen** erstellt LOCKBOX eine
+verschlüsselte JSON-Datei. Sie enthält keine Klartext-Passwörter. Zum Entschlüsseln
+benötigt sie das Master-Passwort, das beim Erstellen der Sicherung galt. Bewahre
+Sicherung und Passwort getrennt und an einem sicheren Ort auf.
+
+Zum Wiederherstellen muss ein Vault geöffnet sein. Wähle die Sicherungsdatei aus,
+gib ihr Master-Passwort ein und bestätige anschließend ausdrücklich das Ersetzen
+des aktuellen Vaults. LOCKBOX prüft die Datei vor dem Ersetzen und verschlüsselt
+die wiederhergestellten Einträge danach mit dem aktuell angemeldeten Master-
+Passwort. Ein Backup bleibt auch nach einer späteren Passwortänderung mit dem
+Passwort entschlüsselbar, das bei seiner Erstellung galt.
+
 ## Vorhandene Browser-Daten
 
 Die Desktop-App hat einen eigenen lokalen Speicher. Ein zuvor im Browser

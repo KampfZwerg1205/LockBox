@@ -1,6 +1,6 @@
 {
   "name": "lockbox-desktop",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "LOCKBOX Passwort-Manager für Windows",
   "private": false,
   "main": "main.js",
@@ -39,7 +39,9 @@
     ],
     "win": {
       "icon": "assets/lockbox.ico",
-      "target": ["nsis"]
+      "target": [
+        "nsis"
+      ]
     },
     "publish": [
       {
